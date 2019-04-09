@@ -16,42 +16,32 @@
 
 package io.spring.billrun.configuration;
 
-import java.util.Map;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
-import org.springframework.batch.core.scope.context.ChunkContext;
-import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JdbcBatchItemWriter;
+import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
-import org.springframework.batch.item.file.builder.FlatFileItemWriterBuilder;
-import org.springframework.batch.item.json.JacksonJsonObjectReader;
-import org.springframework.batch.item.json.JsonItemReader;
-import org.springframework.batch.item.json.builder.JsonItemReaderBuilder;
-import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.task.configuration.EnableTask;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-@EnableTask
-@EnableBatchProcessing
+
 @Configuration
+@EnableBatchProcessing
 public class BillingConfiguration {
 	private static final Log logger = LogFactory.getLog(BillingConfiguration.class);
 
@@ -76,24 +66,21 @@ public class BillingConfiguration {
 		return jobBuilderFactory.get("BillJob")
 				.start(step)
 				.build();
-
 	}
 
 	@Bean
-	public JsonItemReader<Usage> jsonItemReader() {
-
-		ObjectMapper objectMapper = new ObjectMapper();
-		JacksonJsonObjectReader<Usage> jsonObjectReader =
-				new JacksonJsonObjectReader<>(Usage.class);
-		jsonObjectReader.setMapper(objectMapper);
-
-		return new JsonItemReaderBuilder<Usage>()
-				.jsonObjectReader(jsonObjectReader)
-				.resource(usageResource)
-				.name("UsageJsonItemReader")
+	public JdbcCursorItemReader<Usage> jdbcItemReader(DataSource dataSource) {
+		return  new JdbcCursorItemReaderBuilder<Usage>()
+				.dataSource(dataSource)
+				.name("usageReader")
+				.sql("SELECT * from bill_usage")
+				.saveState(false)
+				.rowMapper((rs, rowNum) -> {
+					return new Usage(rs.getLong("ID"), rs.getString("FIRST_NAME"),
+							rs.getString("LAST_NAME"), rs.getLong("MINUTES"), rs.getLong("DATA_USAGE"));
+				})
 				.build();
 	}
-
 
 	@Bean
 	public ItemWriter<Bill> jdbcBillWriter(DataSource dataSource) {

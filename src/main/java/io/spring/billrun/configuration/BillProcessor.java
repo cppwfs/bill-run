@@ -16,23 +16,14 @@
 
 package io.spring.billrun.configuration;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import org.springframework.batch.item.ItemProcessor;
 
 public class BillProcessor implements ItemProcessor<Usage, Bill> {
 
-	private static final Log logger = LogFactory.getLog(BillProcessor.class);
-
 	@Override
-	public Bill process(Usage usage) throws Exception {
+	public Bill process(Usage usage) {
 
 		Double billAmount = usage.getDataUsage() * .001 + usage.getMinutes() * .01;
-		if(usage.getId()==2l) {
-//			throw new IllegalAccessException("NO JOB FOR YOU");
-		}
-		logger.warn(usage);
 		return new Bill(usage.getId(), usage.getFirstName(), usage.getLastName(),
 				usage.getDataUsage(), usage.getMinutes(), billAmount);
 	}
