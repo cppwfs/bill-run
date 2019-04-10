@@ -1,6 +1,8 @@
 package io.spring.billrun;
 
-import io.spring.billrun.configuration.BillingConfiguration;
+import java.util.List;
+
+import io.spring.billrun.configuration.Usage;
 import javax.sql.DataSource;
 import org.junit.Assert;
 import org.junit.Before;
@@ -9,43 +11,88 @@ import org.junit.runner.RunWith;
 
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
+import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.jdbc.EmbeddedDataSourceConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
-//@RunWith(SpringRunner.class)
-//ContextConfiguration(classes = {BillingConfiguration.class, EmbeddedDataSourceConfiguration.class})
+import static org.assertj.core.api.Assertions.assertThat;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest
+@SpringBatchTest
 public class BillRunApplicationTests {
 
-//	@Autowired
-//	private JobLauncherTestUtils jobLauncherTestUtils;
+	@Autowired
+	private JobLauncherTestUtils jobLauncherTestUtils;
 
 	@Autowired
-	DataSource dataSource;
+	private DataSource dataSource;
+
+	private JdbcTemplate jdbcTemplate;
 
 	@Before
 	public void setup()  {
+		this.jdbcTemplate = new JdbcTemplate(this.dataSource);
 		initializeDatabase();
 	}
 
-//	@Test
-	public void contextLoads() throws Exception{
-		JobLauncherTestUtils jobLauncherTestUtils = new JobLauncherTestUtils();
+	@Test
+	public void testJobResults() throws Exception{
 		JobExecution jobExecution = jobLauncherTestUtils.launchJob();
-
-
-		Assert.assertEquals("COMPLETED", jobExecution.getExitStatus());
+		Assert.assertEquals("COMPLETED", jobExecution.getExitStatus().getExitCode());
+		testResult();
 	}
 
+
+	private void testResult() {
+		List<BillStatement> billStatements = this.jdbcTemplate.query("select ID, " +
+						"first_name, last_name, minutes, data_usage, bill_amount FROM bill_statements",
+				(rs, rowNum) -> new BillStatement(rs.getLong("id"),
+						rs.getString("FIRST_NAME"), rs.getString("LAST_NAME"),
+						rs.getLong("MINUTES"), rs.getLong("DATA_USAGE"),
+						rs.getDouble("bill_amount")));
+		assertThat(billStatements.size()).isEqualTo(1);
+
+		BillStatement billStatement = billStatements.get(0);
+		assertThat(billStatement.getBillAmount()).isEqualTo(2.5);
+		assertThat(billStatement.getFirstName()).isEqualTo("jane");
+		assertThat(billStatement.getLastName()).isEqualTo("doe");
+		assertThat(billStatement.getId()).isEqualTo(1);
+		assertThat(billStatement.getMinutes()).isEqualTo(200);
+		assertThat(billStatement.getDataUsage()).isEqualTo(500);
+
+	}
 
 	public void initializeDatabase() {
-		JdbcTemplate jdbcTemplate = new JdbcTemplate(this.dataSource);
-		jdbcTemplate.execute("CREATE TABLE bill_usage ( id int, first_name varchar(50), last_name varchar(50), minutes int, data_usage int)");
-		jdbcTemplate.execute("CREATE TABLE bill_statements ( id int, first_name varchar(50), last_name varchar(50), minutes int, data_usage int, bill_amount decimal(10,2))");
-		int result = jdbcTemplate.queryForObject(
-				"SELECT COUNT(*) FROM bill_usage", Integer.class);
-		System.out.println(result);
+		this.jdbcTemplate.execute("CREATE TABLE bill_usage ( id int, first_name " +
+				"varchar(50), last_name varchar(50), minutes int, data_usage int)");
+		this.jdbcTemplate.execute("CREATE TABLE bill_statements ( id int, " +
+				"first_name varchar(50), last_name varchar(50), minutes int, " +
+				"data_usage int, bill_amount decimal(10,2))");
+		this.jdbcTemplate.execute("INSERT INTO bill_usage (id, first_name, " +
+				"last_name, minutes, data_usage) values (1, 'jane', 'doe', 200, 500)");
 	}
+
+
+
+	public static class BillStatement extends Usage {
+
+		public BillStatement(Long id, String firstName, String lastName, Long minutes, Long dataUsage, double billAmount) {
+			super(id, firstName, lastName, minutes, dataUsage);
+			this.billAmount = billAmount;
+		}
+
+		private double billAmount;
+
+		public double getBillAmount() {
+			return billAmount;
+		}
+
+		public void setBillAmount(double billAmount) {
+			this.billAmount = billAmount;
+		}
+	}
+
 }
