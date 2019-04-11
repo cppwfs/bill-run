@@ -66,12 +66,7 @@ public class BillRunApplicationTests {
 	}
 
 	public void initializeDatabase() {
-		this.jdbcTemplate.execute("CREATE TABLE bill_usage ( id int, first_name " +
-				"varchar(50), last_name varchar(50), minutes int, data_usage int)");
-		this.jdbcTemplate.execute("CREATE TABLE bill_statements ( id int, " +
-				"first_name varchar(50), last_name varchar(50), minutes int, " +
-				"data_usage int, bill_amount decimal(10,2))");
-		this.jdbcTemplate.execute("INSERT INTO bill_usage (id, first_name, " +
+		this.jdbcTemplate.execute("INSERT INTO BILL_USAGE (id, first_name, " +
 				"last_name, minutes, data_usage) values (1, 'jane', 'doe', 200, 500)");
 	}
 

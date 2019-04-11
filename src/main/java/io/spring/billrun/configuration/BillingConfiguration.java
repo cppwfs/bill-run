@@ -16,6 +16,7 @@
 
 package io.spring.billrun.configuration;
 
+import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -32,11 +33,14 @@ import org.springframework.batch.item.database.JdbcBatchItemWriter;
 import org.springframework.batch.item.database.JdbcCursorItemReader;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.weaving.LoadTimeWeaverAware;
 import org.springframework.core.io.Resource;
+import org.springframework.instrument.classloading.LoadTimeWeaver;
 
 
 @Configuration
@@ -96,5 +100,25 @@ public class BillingConfiguration {
 		return new BillProcessor();
 	}
 
-	
+	/**
+	 * Work-around for https://github.com/spring-projects/spring-boot/issues/13042
+	 */
+	@Configuration
+	protected static class DataSourceInitializerInvokerConfiguration implements LoadTimeWeaverAware {
+
+		@Autowired
+		private ListableBeanFactory beanFactory;
+
+		@PostConstruct
+		public void init() {
+			String cls = "org.springframework.boot.autoconfigure.jdbc.DataSourceInitializerInvoker";
+			if (beanFactory.containsBean(cls)) {
+				beanFactory.getBean(cls);
+			}
+		}
+
+		@Override
+		public void setLoadTimeWeaver(LoadTimeWeaver ltw) {
+		}
+	}
 }
