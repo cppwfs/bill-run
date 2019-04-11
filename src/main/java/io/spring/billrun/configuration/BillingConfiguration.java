@@ -72,7 +72,7 @@ public class BillingConfiguration {
 		return  new JdbcCursorItemReaderBuilder<Usage>()
 				.dataSource(dataSource)
 				.name("usageReader")
-				.sql("SELECT * from bill_usage")
+				.sql("SELECT * from BILL_USAGE")
 				.saveState(false)
 				.rowMapper((rs, rowNum) -> {
 					return new Usage(rs.getLong("ID"), rs.getString("FIRST_NAME"),
@@ -86,7 +86,7 @@ public class BillingConfiguration {
 		JdbcBatchItemWriter<Bill> writer = new JdbcBatchItemWriterBuilder<Bill>()
 						.beanMapped()
 				.dataSource(dataSource)
-				.sql("INSERT INTO bill_statements (id, first_name, last_name, minutes, data_usage,bill_amount) VALUES (:id, :firstName, :lastName, :minutes, :dataUsage, :billAmount)")
+				.sql("INSERT INTO BILL_STATEMENTS (id, first_name, last_name, minutes, data_usage,bill_amount) VALUES (:id, :firstName, :lastName, :minutes, :dataUsage, :billAmount)")
 				.build();
 		return writer;
 	}
